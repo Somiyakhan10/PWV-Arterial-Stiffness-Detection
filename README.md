@@ -121,5 +121,4 @@ Built-in assertions check the Bramwell–Hill agreement, √E scaling, the physi
 - The 10 m/s cut-off applies to measured carotid–femoral PWV in people, not to model output.
 - Clinical claims would require measured PWV with age, blood pressure and distance in a cohort, a reference standard or outcome data, and evaluation on held-out data.
 
-g normal and reference values'. *Eur Heart J*. 2010;31(19):2338–2350.
-3. Nichols WW, O'Rourke MF. *McDonald's Blood Flow in Arteries*. (Moens–Korteweg and Bramwell–Hill relations.)
+
