@@ -1,121 +1,125 @@
-# PWV-Arterial-Stiffness-Detection
+# Pulse Wave Velocity and Arterial Stiffness: Simulation
 
-**Computational Hemodynamic Modeling of Pulse Wave Velocity for Arterial Stiffness Detection and Cardiovascular Risk Assessment**
+![Python](https://img.shields.io/badge/Python-3.9%2B-3776AB?logo=python&logoColor=white)
+![Jupyter](https://img.shields.io/badge/Jupyter-Notebook-F37626?logo=jupyter&logoColor=white)
+![NumPy](https://img.shields.io/badge/NumPy-013243?logo=numpy&logoColor=white)
+![Matplotlib](https://img.shields.io/badge/Matplotlib-11557C)
+![Status](https://img.shields.io/badge/Status-Simulation%20only-orange)
+![Validation](https://img.shields.io/badge/Clinical%20validation-None-red)
 
-![Python](https://img.shields.io/badge/Python-3.8%2B-blue)
-![NumPy](https://img.shields.io/badge/NumPy-1.21%2B-orange)
-![Matplotlib](https://img.shields.io/badge/Matplotlib-3.4%2B-green)
-![License](https://img.shields.io/badge/License-MIT-yellow)
+A Jupyter notebook that models how arterial wall stiffness affects pulse wave velocity (PWV). It uses the Moens–Korteweg equation, simulates pressure-wave propagation along an artery, recovers PWV from the simulated waveforms the way it is measured clinically, and compares the results with the 10 m/s carotid–femoral PWV cut-off.
 
----
+> **Simulation only.** All inputs are assumed values. No patient data are used and no diagnostic performance (sensitivity, specificity) is evaluated. The output is not a validated clinical prediction or medical advice.
 
-## 📖 Introduction
+## Method
 
-Arterial stiffness is an independent predictor of cardiovascular events, including hypertension, atherosclerosis, and myocardial infarction. **Pulse Wave Velocity (PWV)** — the speed at which the pressure pulse travels along the arterial wall — is the gold-standard non-invasive measure of arterial stiffness. Higher PWV indicates stiffer arteries and elevated cardiovascular risk.
+**PWV from wall properties.** The Moens–Korteweg equation gives the wave speed in a thin-walled elastic tube:
 
-This project builds a simplified computational model of a pulsatile pressure wave traveling through a 0.5 m artery segment, using the **Moens–Korteweg equation** to compute PWV from arterial wall properties. It simulates the mechanical and hemodynamic response of normal and stiff arteries under physiological pulsatile loading, and applies a clinical threshold to classify each artery as **Normal** or **High Risk**. The goal is to evaluate how arterial wall stiffening alters pressure wave propagation and to provide an interpretable framework for cardiovascular risk detection.
+```
+c0 = sqrt(E·h / (2·ρ·R))
+```
 
----
+| Symbol | Meaning | Unit |
+|---|---|---|
+| E | Incremental elastic modulus of the wall | Pa |
+| h | Wall thickness | m |
+| R | Inner radius | m |
+| ρ | Blood density | kg/m³ |
 
-## 📊 Results
+The result is cross-checked against the Bramwell–Hill relation, which reduces to the same expression for a thin-walled cylinder.
 
-### 1. Computed Pulse Wave Velocities
+**Pressure-wave simulation.** The pulse is a forward-travelling wave of fixed shape, `P(x, t) = P_ref(t − x/c0)`, with a periodic 120/80 mmHg waveform at 75 beats/min. The same waveform is used for both arteries, so the only difference between cases is wave speed.
 
-| Artery Type | Elastic Modulus (Pa) | PWV (m/s) | Detection Result |
-|-------------|----------------------|-----------|------------------|
-| Normal | 5 × 10⁵ | **3.07** | Normal |
-| Stiff | 2 × 10⁶ | **6.14** | High Risk |
+**PWV from waveforms.** PWV is computed as travelled distance divided by transit time between a proximal and a distal site, using two methods:
 
-Peak PWV in the stiff artery is approximately **2× higher** than the normal artery, crossing the clinical risk threshold of 6.0 m/s. This reflects the reduced compliance of the arterial wall, which causes the pressure pulse to travel faster — a hallmark of vascular aging and cardiovascular disease.
+- foot-to-foot (time at which the upstroke reaches 10% of pulse amplitude)
+- cross-correlation with sub-sample refinement
 
-### 2. 3D Spatiotemporal Pressure Distribution
+**Classification.** A simulated PWV above 10 m/s is labelled *Elevated PWV*, otherwise *Below 10 m/s cut-off*. The cut-off comes from the 2012 expert consensus on carotid–femoral PWV, which uses 80% of the direct carotid–femoral distance. It is a screening threshold, not an age-adjusted reference value and not a diagnosis.
 
-<img width="1070" height="493" alt="image" src="https://github.com/user-attachments/assets/cc4e8180-86b2-4a48-8a2b-d86449df209f" />
+## Model parameters
 
+| Parameter | Value |
+|---|---|
+| Blood density, ρ | 1060 kg/m³ |
+| Inner radius, R | 12.5 mm |
+| Wall thickness, h | 1.2 mm (h/R = 0.096) |
+| Elastic modulus, compliant artery | 1.0 MPa |
+| Elastic modulus, stiffened artery | 2.5 MPa |
+| Heart rate | 75 beats/min |
+| Blood pressure | 120/80 mmHg |
+| Direct carotid–femoral distance | 0.60 m |
+| Effective travelled distance | 0.48 m (80% of direct) |
+| PWV cut-off | 10 m/s |
 
-*Figure 1: 3D spatiotemporal pressure distribution along the artery for normal (left) and stiff (right) cases.*
+## Results
 
-### 3. Mid-Artery Pressure Waveform
+| Case | E (MPa) | PWV, Moens–Korteweg (m/s) | PWV, foot-to-foot (m/s) | PWV, cross-correlation (m/s) | Category |
+|---|---|---|---|---|---|
+| Compliant artery | 1.00 | 6.73 | 6.73 | 6.73 | Below 10 m/s cut-off |
+| Stiffened artery | 2.50 | 10.64 | 10.64 | 10.64 | Elevated PWV (> 10 m/s) |
 
-<img width="726" height="469" alt="image" src="https://github.com/user-attachments/assets/1d13d5e3-34f7-45fb-a743-fe5adea8f573" />
+- With this geometry, PWV reaches 10 m/s at E ≈ 2.21 MPa.
+- Increasing E by a factor of 2.5 increases PWV by a factor of 1.58 (the square root of the ratio).
+- The distal pulse arrives about 26 ms earlier in the stiffened case.
+- Transit-time estimates match the analytic values to within 1%. Because the simulated wave is non-dispersive, this verifies the numerical procedure, not the physiology.
+- The classification is sensitive to the inputs: a ±20% change in E, h, R or ρ moves the stiffened case across the cut-off, and a ±5 ms timing error does the same.
 
+## Screenshots
 
-*Figure 2: Mid-artery pressure waveform comparison showing phase shift between normal and stiff arteries.*
+**Simulated PWV vs wall stiffness**
 
-### 4. Console Output
+![PWV vs wall stiffness](images/pwv_vs_stiffness.png)
 
-<img width="450" height="128" alt="image" src="https://github.com/user-attachments/assets/586e2311-4c6e-468b-b16d-1acda6cac11c" />
+**Simulated pressure wave P(x, t)**
 
+![3D pressure wave](images/pressure_wave_3d.png)
 
-*Figure 3: Console output showing computed PWV values and risk classifications.*
+**Pressure wave at mid-segment**
 
-### 5. Simulation Summary
+![Mid-segment waveform](images/mid_segment_waveform.png)
 
-| Quantity | Value | Unit |
-|----------|-------|------|
-| Blood density (ρ) | 1060 | kg/m³ |
-| Artery radius (R) | 0.004 | m |
-| Wall thickness (h) | 0.0008 | m |
-| Heart rate (f) | 1.25 | Hz |
-| Pressure amplitude (P₀) | 10,000 | Pa |
-| Artery length | 0.5 | m |
-| PWV risk threshold | 6.0 | m/s |
-| Normal PWV | 3.07 | m/s |
-| Stiff PWV | 6.14 | m/s |
-| Normal risk classification | Normal | — |
-| Stiff risk classification | High Risk | — |
+**Transit-time estimation (proximal vs distal site)**
 
----
+![Transit-time estimation](images/transit_time_estimation.png)
 
-## 📋 Key Results Summary
+## Getting started
 
-| Quantity | Value | Unit |
-|----------|-------|------|
-| Normal artery PWV | 3.07 | m/s |
-| Stiff artery PWV | 6.14 | m/s |
-| PWV ratio (stiff/normal) | ~2.0 | — |
-| Pressure amplitude | 10,000 | Pa |
-| Heart rate | 1.25 | Hz |
-| Artery length | 0.5 | m |
-| Risk threshold | 6.0 | m/s |
-| Normal detection | Normal | — |
-| Stiff detection | High Risk | — |
+**Requirements:** Python 3.9 or later, `numpy`, `matplotlib`, and Jupyter.
 
----
+```bash
+pip install numpy matplotlib notebook
+jupyter notebook PWV_Arterial_Stiffness_Detection.ipynb
+```
 
-## 🔧 Methods Overview
+Run all cells from top to bottom. The notebook also runs in Google Colab without changes. To execute it headlessly:
 
-### Geometry
+```bash
+pip install nbconvert ipykernel
+jupyter nbconvert --to notebook --execute PWV_Arterial_Stiffness_Detection.ipynb
+```
 
-| Component | Count | Dimensions |
-|-----------|-------|------------|
-| Artery segment | 1 | 0.5 m length |
-| Artery radius | — | 4 mm |
-| Wall thickness | — | 0.8 mm |
-| Spatial resolution | 200 | points |
-| Temporal resolution | 500 | points per cycle |
+Built-in assertions check the Bramwell–Hill agreement, √E scaling, the physiological pressure range, agreement between transit-time and analytic PWV, and consistency of the categories.
 
-### Material Properties
+## Notebook structure
 
-| Property | Value | Justification |
-|----------|-------|---------------|
-| Blood density (ρ) | 1060 kg/m³ | Standard physiological value |
-| Normal elastic modulus (E) | 5 × 10⁵ Pa | Healthy arterial wall |
-| Stiff elastic modulus (E) | 2 × 10⁶ Pa | Remodeled/stiff arterial wall |
-| Wall thickness (h) | 0.0008 m | Typical large artery |
-| Artery radius (R) | 0.004 m | Typical large artery |
+| Section | Description |
+|---|---|
+| 1. Theory | Moens–Korteweg equation, assumptions, clinical cut-off |
+| 2. PWV and classification | Calculation, verification, categories |
+| 3. Sensitivity | PWV vs elastic modulus, ±20% parameter changes |
+| 4. Pressure-wave simulation | 3D P(x, t) surfaces, mid-segment waveform |
+| 5. PWV from waveforms | Foot-to-foot and cross-correlation estimates, timing and distance error |
+| 6. Summary | Results table generated from the calculations |
+| 7. Limitations | Model limits and validation requirements |
 
-### Future Work
-This project provides a foundation for more advanced hemodynamic and cardiovascular risk modeling. The following extensions are planned:
+## Limitations
 
-Nonlinear arterial wall models — Replace linear elasticity with hyperelastic constitutive laws (e.g., Holzapfel–Gasser–Ogden) to capture the realistic strain-stiffening behavior of arterial tissue under physiological loads.
+- Thin-wall, linearly elastic model with constant E and uniform geometry; real arteries are non-linear, tapered and stiffen with pressure.
+- No wave reflection, damping, dispersion or blood-pressure dependence.
+- E, R, h and the pressure waveform are assumed, not measured.
+- The 10 m/s cut-off applies to measured carotid–femoral PWV in people, not to model output.
+- Clinical claims would require measured PWV with age, blood pressure and distance in a cohort, a reference standard or outcome data, and evaluation on held-out data.
 
-Wave reflection analysis — Incorporate arterial bifurcations and peripheral resistance to model pressure wave reflections, which are clinically significant for understanding augmented pressure and cardiac afterload.
-
-Patient-specific geometry — Import arterial geometry from ultrasound or MRI scans to build subject-specific models for individualized PWV estimation and risk stratification.
-
-Fluid–structure interaction (FSI) — Couple blood flow (fluid domain) with arterial wall deformation (solid domain) to capture the full biomechanical response, including wall shear stress and compliance.
-
-Machine learning integration — Train classifiers (e.g., Random Forest, SVM, or deep learning) on PWV and waveform features for automated cardiovascular risk prediction using large clinical datasets.
-
-
+g normal and reference values'. *Eur Heart J*. 2010;31(19):2338–2350.
+3. Nichols WW, O'Rourke MF. *McDonald's Blood Flow in Arteries*. (Moens–Korteweg and Bramwell–Hill relations.)
